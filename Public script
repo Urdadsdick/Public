@@ -1,0 +1,208 @@
+-- Load the Orion Library
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+
+-- Create Window
+local Window = OrionLib:MakeWindow({
+    Name = "Goat Hub for Roblox",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "GoatHub"
+})
+
+-- Global Variables
+_G.ragdollCollapse = false
+_G.godmode = false
+_G.fly = false
+_G.autoPickup = false
+_G.speed = 16 -- Default speed
+_G.invisible = false
+
+-- Helper Functions --
+
+-- Godmode: Sets player health to a very high value
+function enableGodmode()
+    local player = game.Players.LocalPlayer
+    if player and player.Character and player.Character:FindFirstChild("Humanoid") then
+        local humanoid = player.Character.Humanoid
+        humanoid.MaxHealth = math.huge
+        humanoid.Health = math.huge
+        print("Godmode enabled!")
+    end
+end
+
+-- Fly: Enables flying by applying BodyVelocity and BodyGyro
+function enableFly()
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+    -- Create BodyGyro and BodyVelocity for flying
+    local bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.P = 9e4
+    bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bodyGyro.CFrame = humanoidRootPart.CFrame
+    bodyGyro.Parent = humanoidRootPart
+
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bodyVelocity.Velocity = Vector3.zero
+    bodyVelocity.Parent = humanoidRootPart
+
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if _G.fly then
+            bodyGyro.CFrame = workspace.CurrentCamera.CFrame
+            bodyVelocity.Velocity = workspace.CurrentCamera.CFrame.LookVector * 50
+        else
+            bodyGyro:Destroy()
+            bodyVelocity:Destroy()
+        end
+    end)
+end
+
+-- Auto Pickup: Automatically collects items in range
+function enableAutoPickup()
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if _G.autoPickup then
+            for _, item in pairs(workspace:GetChildren()) do
+                if item:IsA("Part") and (item.Position - character.HumanoidRootPart.Position).Magnitude < 50 then
+                    firetouchinterest(character.HumanoidRootPart, item, 0)
+                    firetouchinterest(character.HumanoidRootPart, item, 1)
+                end
+            end
+        end
+    end)
+end
+
+-- Speed Hack: Adjusts walk speed based on user input
+function setWalkSpeed(speed)
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+
+    humanoid.WalkSpeed = speed
+    print("Walk speed set to: " .. speed)
+end
+
+-- Invisible Mode: Makes the player invisible
+function enableInvisible()
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Transparency = 1
+        elseif part:IsA("Decal") then
+            part.Transparency = 1
+        end
+    end
+    character.HumanoidRootPart.Anchored = true
+end
+
+-- Ragdoll Collapse: Ragdolls nearby players when touched
+function enableRagdollCollapse()
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+
+    game:GetService("RunService").Heartbeat:Connect(function()
+        if _G.ragdollCollapse and character and character:FindFirstChild("HumanoidRootPart") then
+            for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+                if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("Humanoid") then
+                    local otherCharacter = otherPlayer.Character
+                    local humanoid = otherCharacter:FindFirstChild("Humanoid")
+                    local distance = (character.HumanoidRootPart.Position - otherCharacter.PrimaryPart.Position).Magnitude
+
+                    if humanoid and humanoid.Health > 0 and distance < 5 then -- 5-stud range
+                        humanoid:ChangeState(Enum.HumanoidStateType.Physics) -- Ragdoll state
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Tabs and Features --
+
+-- Trolling Tab
+local trollingTab = Window:MakeTab({
+    Name = "Trolling",
+    Icon = "rbxassetid://6034816636",
+    PremiumOnly = false
+})
+
+trollingTab:AddToggle({
+    Name = "Enable Godmode",
+    Default = false,
+    Callback = function(Value)
+        _G.godmode = Value
+        if Value then enableGodmode() end
+    end
+})
+
+trollingTab:AddToggle({
+    Name = "Enable Ragdoll Collapse",
+    Default = false,
+    Callback = function(Value)
+        _G.ragdollCollapse = Value
+        if Value then enableRagdollCollapse() end
+    end
+})
+
+-- Auto Farm Tab
+local autoFarmTab = Window:MakeTab({
+    Name = "Auto Farm",
+    Icon = "rbxassetid://6034816636",
+    PremiumOnly = false
+})
+
+autoFarmTab:AddToggle({
+    Name = "Auto Pickup Items",
+    Default = false,
+    Callback = function(Value)
+        _G.autoPickup = Value
+        if Value then enableAutoPickup() end
+    end
+})
+
+-- Players Tab
+local playersTab = Window:MakeTab({
+    Name = "Players",
+    Icon = "rbxassetid://6034816636",
+    PremiumOnly = false
+})
+
+playersTab:AddTextbox({
+    Name = "Set Walk Speed",
+    Default = "16",
+    TextDisappear = true,
+    Callback = function(Value)
+        local speed = tonumber(Value)
+        if speed then
+            _G.speed = speed
+            setWalkSpeed(speed)
+        else
+            print("Invalid speed value")
+        end
+    end
+})
+
+playersTab:AddButton({
+    Name = "Become Invisible",
+    Callback = function()
+        _G.invisible = true
+        enableInvisible()
+    end
+})
+
+playersTab:AddButton({
+    Name = "Enable Fly",
+    Callback = function()
+        _G.fly = true
+        enableFly()
+    end
+})
+
+-- Initialize GUI
+OrionLib:Init()
